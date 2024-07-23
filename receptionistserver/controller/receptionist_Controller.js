@@ -2207,13 +2207,11 @@ const getSinglePatientSecurityAmt = (req, res) => {
       return res.status(404).json({ success: false, error: "Not Found Data" });
     } else {
       logger.info("Successfully get single patient security amount");
-      return res
-        .status(200)
-        .json({
-          success: true,
-          message: "Access data Successfully",
-          data: result,
-        });
+      return res.status(200).json({
+        success: true,
+        message: "Access data Successfully",
+        data: result,
+      });
     }
   });
 };
@@ -3070,12 +3068,10 @@ const getPrescriptionViaUhid = (req, res) => {
         console.error("Error fetching Prescription from MySql:", err);
         res.status(500).json({ error: "Error fetching Prescription" });
       } else {
-        res
-          .status(200)
-          .json({
-            data: results,
-            message: "Prescription fetched successfully",
-          });
+        res.status(200).json({
+          data: results,
+          message: "Prescription fetched successfully",
+        });
       }
     });
   } catch (error) {
@@ -3222,12 +3218,10 @@ const sendOtp = (req, res) => {
             if (error) {
               logger.error("Failed to send otp email");
               console.error(error);
-              return res
-                .status(500)
-                .json({
-                  success: false,
-                  message: "An error occurred while sending the email.",
-                });
+              return res.status(500).json({
+                success: false,
+                message: "An error occurred while sending the email.",
+              });
             } else {
               console.log("OTP sent:", info.response);
 
@@ -3389,6 +3383,144 @@ const getPatientLabTestByPatientId = (req, res) => {
   }
 };
 
+const getSittingBillDue = (req, res) => {
+  try {
+    const branch = req.params.branch;
+    const selectQuery =
+      "SELECT * FROM sitting_bill JOIN treatment_package ON treatment_package.tp_id = sitting_bill.tp_id JOIN patient_details ON patient_details.uhid = treatment_package.uhid WHERE sitting_bill.branch_name = ?";
+    db.query(selectQuery, branch, (err, result) => {
+      if (err) {
+        res.status(400).json({ success: false, message: err.message });
+      }
+      res.status(200).send(result);
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const getSittingBillDueBySittingId = (req, res) => {
+  try {
+    const branch = req.params.branch;
+    const sbid = req.params.sbid;
+    const selectQuery =
+      "SELECT * FROM sitting_bill JOIN treatment_package ON treatment_package.tp_id = sitting_bill.tp_id JOIN patient_details ON patient_details.uhid = treatment_package.uhid WHERE sitting_bill.branch_name = ? AND sitting_bill.sb_id = ?";
+    db.query(selectQuery, [branch, sbid], (err, result) => {
+      if (err) {
+        res.status(400).json({ success: false, message: err.message });
+      }
+      res.status(200).send(result);
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const updateSittingBillPayment = (req, res) => {
+  try {
+    const sbid = req.params.sbid;
+    const branch = req.params.branch;
+    const {
+      paid_amount,
+      pending_sitting_amount,
+      pay_direct,
+      pay_security_amount,
+      payment_mode,
+      reference_number,
+      payment_status,
+      note,
+    } = req.body;
+
+    const selectQuery =
+      "SELECT * FROM sitting_bill WHERE sb_id = ? AND branch_name = ?";
+    db.query(selectQuery, [sbid, branch], (err, result) => {
+      if (err) {
+        res.status(400).json({ success: false, message: err.message });
+      }
+      if (result && result.length > 0) {
+        const updateFields = [];
+        const updateValues = [];
+
+        if (paid_amount) {
+          updateFields.push("paid_amount = ?");
+          updateValues.push(paid_amount);
+        }
+
+        if (pending_sitting_amount) {
+          updateFields.push("pending_sitting_amount = ?");
+          updateValues.push(pending_sitting_amount);
+        }
+
+        if (pay_direct) {
+          updateFields.push("pay_direct = ?");
+          updateValues.push(pay_direct);
+        }
+
+        if (pay_security_amount) {
+          updateFields.push("pay_security_amount = ?");
+          updateValues.push(pay_security_amount);
+        }
+
+        if (payment_mode) {
+          updateFields.push("payment_mode = ?");
+          updateValues.push(payment_mode);
+        }
+
+        if (reference_number) {
+          updateFields.push("reference_number = ?");
+          updateValues.push(reference_number);
+        }
+
+        if (payment_status) {
+          updateFields.push("payment_status = ?");
+          updateValues.push(payment_status);
+        }
+
+        if (note) {
+          updateFields.push("note = ?");
+          updateValues.push(note);
+        }
+
+        const updateQuery = `UPDATE sitting_bill SET ${updateFields.join(
+          ", "
+        )} WHERE sb_id = ? AND branch_name = ?`;
+
+        db.query(
+          updateQuery,
+          [...updateValues, sbid, branch],
+          (err, result) => {
+            if (err) {
+              return res.status(500).json({
+                success: false,
+                message: "Failed to update details",
+              });
+            } else {
+              return res.status(200).json({
+                success: true,
+                message: "Lab Details updated successfully",
+              });
+            }
+          }
+        );
+      } else {
+        res
+          .status(400)
+          .json({ success: false, message: "sitting bill not exist" });
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+// const getSittingBillbyId = (req, res) => {
+//   try {
+//     const
+//   } catch (error) {
+//     res.status(500).json({ success: false, message: "internal server error" });
+//   }
+// };
+
 module.exports = {
   addPatient,
   getDisease,
@@ -3451,4 +3583,7 @@ module.exports = {
   resetPassword,
   updateTreatmentStatus,
   getPatientLabTestByPatientId,
+  getSittingBillDue,
+  getSittingBillDueBySittingId,
+  updateSittingBillPayment,
 };
