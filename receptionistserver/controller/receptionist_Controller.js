@@ -3513,13 +3513,185 @@ const updateSittingBillPayment = (req, res) => {
   }
 };
 
-// const getSittingBillbyId = (req, res) => {
-//   try {
-//     const
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: "internal server error" });
-//   }
-// };
+const getSittingBillbyId = (req, res) => {
+  try {
+    const { sbid, branch } = req.params;
+    const selectQuery =
+      "SELECT * FROM sitting_bill WHERE branch_name = ? AND sb_id = ?";
+    db.query(selectQuery, [branch, sbid], (err, result) => {
+      if (err) {
+        res.status(400).json({ success: false, message: err.message });
+      }
+      res.status(200).send(result);
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "internal server error" });
+  }
+};
+
+const getEmployeeDetailsbyId = (req, res) => {
+  try {
+    const { eid, branch } = req.params;
+    const selectQuery =
+      "SELECT * FROM employee_register WHERE branch_name = ? AND employee_ID = ?";
+    db.query(selectQuery, [branch, eid], (err, result) => {
+      if (err) {
+        res.status(400).json({ success: false, message: err.message });
+      }
+      res.status(200).send(result);
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "internal server error" });
+  }
+};
+
+const updateBillforSitting = (req, res) => {
+  const payment_date_time = moment()
+    .tz("Asia/Kolkata")
+    .format("DD-MM-YYYY HH:mm:ss");
+  try {
+    const tpid = req.params.tpid;
+    const branch = req.params.branch;
+    const {
+      paid_amount,
+      payment_status,
+      payment_mode,
+      transaction_Id,
+      note,
+      receiver_name,
+      receiver_emp_id,
+      pay_by_sec_amt,
+    } = req.body;
+    const selectQuery =
+      "SELECT * FROM patient_bills WHERE branch_name = ? AND tp_id = ?";
+
+    db.query(selectQuery, [branch, tpid], (err, result) => {
+      if (err) {
+        logger.error("Error get patient bill details");
+        return res.status(400).json({ success: false, message: err.message });
+      }
+      if (result && result.length > 0) {
+        const updateFields = [];
+        const updateValues = [];
+
+        if (paid_amount) {
+          updateFields.push("paid_amount = ?");
+          updateValues.push(paid_amount);
+        }
+
+        if (payment_status) {
+          updateFields.push("payment_status = ?");
+          updateValues.push(payment_status);
+        }
+
+        if (payment_date_time) {
+          updateFields.push("payment_date_time = ?");
+          updateValues.push(payment_date_time);
+        }
+        if (payment_mode) {
+          updateFields.push("payment_mode = ?");
+          updateValues.push(payment_mode);
+        }
+        if (transaction_Id) {
+          updateFields.push("transaction_Id = ?");
+          updateValues.push(transaction_Id);
+        }
+        if (note) {
+          updateFields.push("note = ?");
+          updateValues.push(note);
+        }
+        if (receiver_name) {
+          updateFields.push("receiver_name = ?");
+          updateValues.push(receiver_name);
+        }
+        if (receiver_emp_id) {
+          updateFields.push("receiver_emp_id = ?");
+          updateValues.push(receiver_emp_id);
+        }
+        if (pay_by_sec_amt) {
+          updateFields.push("pay_by_sec_amt = ?");
+          updateValues.push(pay_by_sec_amt);
+        }
+
+        const updateQuery = `UPDATE patient_bills SET ${updateFields.join(
+          ", "
+        )} WHERE branch_name = ? AND tp_id = ?`;
+
+        db.query(
+          updateQuery,
+          [...updateValues, branch, tpid],
+          (err, result) => {
+            if (err) {
+              logger.error("Failed to update patient bill details ");
+              return res.status(500).json({
+                success: false,
+                message: "Failed to update details",
+              });
+            } else {
+              logger.info("Patient bill details updated successfully");
+              return res.status(200).json({
+                success: true,
+                message: "Payment updated successfully",
+              });
+            }
+          }
+        );
+      } else {
+        logger.error("Failed to update patient bill details ");
+        return res.status(404).json({
+          success: false,
+          message: "Branch/bill not found",
+        });
+      }
+    });
+  } catch (error) {
+    logger.error("Failed to update patient bill details ");
+    console.log(error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const getPaidSittingBillbyTpid = (req, res) => {
+  try {
+    const { tpid, branch } = req.params;
+    const selectQuery =
+      "SELECT * FROM sitting_bill WHERE tp_id = ? AND branch_name = ? AND payment_status = 'paid'";
+    db.query(selectQuery, [tpid, branch], (err, result) => {
+      if (err) {
+        res.status(400).json({ success: false, message: err.message });
+      }
+      res.status(200).send(result);
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "internal server error" });
+  }
+};
+
+const completePatientBill = (req, res) => {
+  try {
+    const { tpid, branch } = req.params;
+    const paymentStatus = "paid";
+    const selectQuery =
+      "SELECT * FROM patient_bills WHERE tp_id = ? AND branch_name = ?";
+    db.query(selectQuery, [tpid, branch], (err, result) => {
+      if (err) {
+        res.status(400).json({ success: false, message: err.message });
+      }
+      if (result && result.length > 0) {
+        const updateQuery =
+          "UPDATE patient_bills SET payment_status = ? WHERE tp_id = ? AND branch_name = ?";
+        db.query(updateQuery, [paymentStatus, tpid, branch], (err, result) => {
+          if (err) {
+            res.status(400).json({ success: false, message: err.message });
+          }
+          res.status(200).json({ success: true, message: "" });
+        });
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "internal server error" });
+  }
+};
 
 module.exports = {
   addPatient,
@@ -3586,4 +3758,8 @@ module.exports = {
   getSittingBillDue,
   getSittingBillDueBySittingId,
   updateSittingBillPayment,
+  getEmployeeDetailsbyId,
+  updateBillforSitting,
+  getPaidSittingBillbyTpid,
+  completePatientBill,
 };

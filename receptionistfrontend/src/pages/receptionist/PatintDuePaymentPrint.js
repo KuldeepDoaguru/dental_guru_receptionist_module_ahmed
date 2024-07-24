@@ -213,7 +213,7 @@ function PatintDuePaymentPrint() {
       if (response.data.success) {
         setLoading(false);
         cogoToast.success("payment successful");
-        completeTreatment();
+        updateTreatmentPackages();
         getBillDetails();
         console.log(response.data);
         updateRemainingSecurity();
@@ -222,7 +222,7 @@ function PatintDuePaymentPrint() {
           transaction_Id: "",
           note: "",
         });
-        // navigate(`/patient-bill/${bid}/${tpid}`);
+        navigate(`/due_amount`);
       } else {
         setLoading(false);
         cogoToast.success("Failed to paid bill");
@@ -246,11 +246,10 @@ function PatintDuePaymentPrint() {
     document.body.innerHTML = originalContent;
   };
 
-  const completeTreatment = async () => {
+  const updateTreatmentPackages = async () => {
     try {
       const res = await axios.put(
         `http://localhost:4000/api/v1/receptionist/updateTreatmentStatus/${branch}/${tpid}`,
-        {},
         {
           headers: {
             "Content-Type": "application/json",
@@ -258,9 +257,21 @@ function PatintDuePaymentPrint() {
           },
         }
       );
+      cogoToast.success("treatment package updated successfully");
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const updatePatientBill = async () => {
+    try {
+      const res = await axios.put(
+        `http://localhost:4000/api/v1/receptionist/completePatientBill/${tpid}/${branch}`
+      );
       console.log(res);
+      updateTreatmentPackages();
       cogoToast.success("Treatment Completed");
-      navigate(`/patient-bill/${bid}/${tpid}`);
+      navigate(`/due_amount`);
     } catch (error) {
       console.log(error?.response?.data?.message);
       cogoToast.error(error?.response?.data?.message);
@@ -506,13 +517,13 @@ function PatintDuePaymentPrint() {
                   >
                     Pay Now
                   </button>
-                  {/* <button
-                        type="button"
-                        className="btn btn-warning ms-2"
-                        onClick={completeTreatment}
-                      >
-                        Mark Treatment Complete
-                      </button> */}
+                  <button
+                    type="button"
+                    className="btn btn-warning ms-2"
+                    onClick={updatePatientBill}
+                  >
+                    Mark Treatment Complete
+                  </button>
                 </>
               ) : (
                 <>

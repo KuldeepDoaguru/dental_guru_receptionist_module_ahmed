@@ -1,4 +1,5 @@
 import axios from "axios";
+import { numToWords } from "num-to-words";
 import React, { useEffect, useState } from "react";
 import { IoMdArrowRoundBack } from "react-icons/io";
 import { useSelector } from "react-redux";
@@ -18,6 +19,8 @@ const SittingBill = () => {
   const [getTreatSug, setGetTreatSug] = useState([]);
   const [getBranch, setGetBranch] = useState([]);
   const [getLabData, setGetLabData] = useState([]);
+  const [sittingBill, setSittingBill] = useState([]);
+  const [getDocDetails, setGetDocDetails] = useState([]);
 
   const getBranchDetails = async () => {
     try {
@@ -62,7 +65,7 @@ const SittingBill = () => {
   const getLabAllData = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:8888/api/doctor/lab-details/${tpid}`,
+        `http://localhost:4000/api/v1/receptionist/lab-details/${tpid}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -77,14 +80,77 @@ const SittingBill = () => {
     }
   };
 
+  const getSittingBillbyId = async () => {
+    try {
+      const { data } = await axios.get(
+        `http://localhost:4000/api/v1/receptionist/getSittingBillbyId/${branch}/${sbid}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setSittingBill(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  console.log(sittingBill);
+
+  const getDoctorDetails = async () => {
+    try {
+      const { data } = await axios.get(
+        `http://localhost:4000/api/v1/receptionist/getEmployeeDetailsbyId/${branch}/${getPatientData[0]?.doctor_id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setGetDocDetails(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  console.log(getDocDetails);
+
+  const getExamineDetails = async () => {
+    try {
+      const res = await axios.get(
+        `http://localhost:4000/api/v1/receptionist/getDentalDataByTpid/${tpid}/${branch}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setGetExaminData(res.data.result);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  console.log(getExaminData);
+
   useEffect(() => {
     getPatientDetail();
     getBranchDetails();
     getLabAllData();
+    getSittingBillbyId();
+    getDoctorDetails();
+    getExamineDetails();
   }, []);
 
+  console.log(sittingBill);
+
   const goBack = () => {
-    window.history.go(-1);
+    navigate("/sitting-due-amount");
   };
   return (
     <>
@@ -224,14 +290,14 @@ const SittingBill = () => {
                   <tr>
                     <th scope="row">Address</th>
                     <td>{item.address}</td>
-                    <th scope="row">Invoice No.</th>
+                    <th scope="row">Sitting Invoice No.</th>
                     <td>{sbid}</td>
                   </tr>
                   <tr>
                     <th scope="row">Mobile No.</th>
                     <td>{item.mobileno}</td>
                     <th scope="row">Date</th>
-                    <td>billDetails[0]?.bill_date.split("T")[0]</td>
+                    <td>{sittingBill[0]?.date.split(" ")[0]}</td>
                   </tr>
                   <tr>
                     <th scope="row">Email</th>
@@ -253,13 +319,13 @@ const SittingBill = () => {
             <div className="text-start docDetails">
               <p>
                 <strong>Doctor Name :</strong> Dr.{" "}
-                user.currentUser.employee_name
+                {getDocDetails[0]?.employee_name}
               </p>
               <p>
-                <strong>Mobile :</strong> user.currentUser.employee_mobile
+                <strong>Mobile :</strong> {getDocDetails[0]?.employee_mobile}
               </p>
               <p>
-                <strong>Email :</strong> user.currentUser.email
+                <strong>Email :</strong> {getDocDetails[0]?.employee_email}
               </p>
             </div>
           </div>
@@ -281,15 +347,17 @@ const SittingBill = () => {
               </tr>
             </thead>
             <tbody>
-              <>
-                <tr>
-                  <td>selected_teeth</td>
-                  <td>disease</td>
-                  <td>chief_complain</td>
-                  <td>on_examination</td>
-                  <td>advice</td>
-                </tr>
-              </>
+              {getExaminData?.map((item) => (
+                <>
+                  <tr>
+                    <td>{item.selected_teeth}</td>
+                    <td>{item.disease}</td>
+                    <td>{item.chief_complain}</td>
+                    <td>{item.on_examination}</td>
+                    <td>{item.advice}</td>
+                  </tr>
+                </>
+              ))}
             </tbody>
           </table>
         </div>
@@ -311,32 +379,40 @@ const SittingBill = () => {
                   <th>Cost</th>
                   <th>Cst * Qty</th>
                   <th>Disc %</th>
-                  <th>Net Amount</th>
+                  <th>Net Treatment Amount</th>
+                  <th>Sitting Amount</th>
                   <th>Paid Amount</th>
+                  <th>Payment Mode</th>
+                  <th>Payment Date</th>
+                  {/* <th>Note</th> */}
                 </tr>
               </thead>
               <tbody>
-                <React.Fragment>
-                  <tr
-                  // className={index % 2 === 0 ? "table-primary" : "table-info"}
-                  >
-                    <td>sitting_number</td>
-                    <td>dental_treatment</td>
-                    <td>no_teeth</td>
-                    <td>qty</td>
-                    <td>cost_amt</td>
-                    <td>total_amt</td>
-                    <td>disc_amt</td>
-                    <td>net_amount</td>
-                    <td>
-                      {" "}
-                      sitting_payment_status === "Pending" ? 0 :
-                      item.paid_amount
-                    </td>
-                  </tr>
-                </React.Fragment>
+                {sittingBill?.map((item, index) => (
+                  <>
+                    <tr
+                      className={
+                        index % 2 === 0 ? "table-primary" : "table-info"
+                      }
+                    >
+                      <td>{item.sitting_number}</td>
+                      <td>{item.treatment}</td>
+                      <td>{item.teeth_number}</td>
+                      <td>{item.teeth_qty}</td>
+                      <td>{item.treatment_cost}</td>
+                      <td>{item.treatment_cost * item.teeth_qty}</td>
+                      <td>{item.discount}</td>
+                      <td>{item.final_cost}</td>
+                      <td>{item.sitting_amount}</td>
+                      <td>{item.paid_amount}</td>
+                      <td>{item.payment_mode}</td>
+                      <td>{item.date?.split(" ")[0]}</td>
+                      {/* <td>{item.note}</td> */}
+                    </tr>
+                  </>
+                ))}
               </tbody>
-              <tfoot>
+              {/* <tfoot>
                 <tr>
                   <td
                     colSpan="8"
@@ -346,13 +422,11 @@ const SittingBill = () => {
                     Treatment Pending Payment:
                   </td>
                   <td className="heading-title text-danger fw-bold">
-                    {/* Calculate total cost here */}
-                    {/* Assuming getTreatData is an array of objects with 'net_amount' property */}
                     billDetails[0]?.total_amount - totalBillvalueWithoutGst
                   </td>
                 </tr>
-              </tfoot>
-              <tfoot>
+              </tfoot> */}
+              {/* <tfoot>
                 <tr>
                   <td
                     colSpan="7"
@@ -362,27 +436,27 @@ const SittingBill = () => {
                     Treatment Total:
                   </td>
                   <td className="heading-title">
-                    {/* {netVal.reduce(
+                    {netVal.reduce(
                       (total, item) =>
                         total +
                         (Number(item.total_amt) -
                           (Number(item.total_amt) * Number(item.disc_amt)) /
                             100),
                       0
-                    )} */}
+                    )}
                   </td>
 
                   <td className="heading-title">
-                    {/* {getTreatData.reduce(
+                    {getTreatData.reduce(
                       (total, item) =>
                         item.sitting_payment_status === "Pending"
                           ? total
                           : total + Number(item.paid_amount),
                       0
-                    )} */}
+                    )}
                   </td>
                 </tr>
-              </tfoot>
+              </tfoot> */}
             </table>
           </div>
         </div>
@@ -395,7 +469,10 @@ const SittingBill = () => {
                   <h4>Total Amount In Words :</h4>
                 </div>
                 <div className="text-word">
-                  <p className="m-0">totalBillvalueWithoutGst</p>
+                  <p className="m-0">
+                    {" "}
+                    {numToWords(sittingBill[0]?.paid_amount).toUpperCase()} ONLY
+                  </p>
                 </div>
               </div>
               <div className="">
@@ -443,7 +520,7 @@ const SittingBill = () => {
             <div className="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4">
               <div className="">
                 <table className="table table-bordered mb-0">
-                  <tbody>
+                  {/* <tbody>
                     <tr>
                       <td className="col-xxl-6 col-xl-6 col-lg-6 col-md-6 col-sm-6 col-6 border p-1 text-end total-tr">
                         Amount Received After Treatment:
@@ -452,14 +529,14 @@ const SittingBill = () => {
                         totalBillvalueWithoutGst - payafterTreat
                       </td>
                     </tr>
-                  </tbody>
+                  </tbody> */}
                   <tbody>
                     <tr>
                       <td className="col-xxl-6 col-xl-6 col-lg-6 col-md-6 col-sm-6 col-6 border p-1 text-end total-tr">
                         Total Amount Recieved:
                       </td>
                       <td className="col-xxl-6 col-xl-6 col-lg-6 col-md-6 col-sm-6 col-6 border p-1 text-center total-tr">
-                        totalBillvalueWithoutGst
+                        {sittingBill[0]?.paid_amount}
                       </td>
                     </tr>
                   </tbody>
@@ -647,4 +724,8 @@ const Wrapper = styled.div`
   td {
     white-space: nowrap;
   } */
+
+  th {
+    white-space: nowrap;
+  }
 `;

@@ -274,8 +274,8 @@ function SittingBillDetails() {
                           <th className=" sticky">Patients Email</th>
                           <th className=" sticky">Doctor Name</th>
                           <th className=" sticky">Sitting Amount</th>
-                          <th className=" sticky">Paid By Direct Amount</th>
-                          <th className=" sticky">Paid By Secuirty Amt</th>
+                          {/* <th className=" sticky">Paid By Direct Amount</th>
+                          <th className=" sticky">Paid By Secuirty Amt</th> */}
                           <th className=" sticky">Due Amount</th>
                           <th className=" sticky">Bill Date</th>
                           <th className=" sticky">Action</th>
@@ -306,12 +306,12 @@ function SittingBillDetails() {
                                   {item.doctor_name}
                                 </td>
                                 <td>{item.sitting_amount}</td>
-                                <td>{item.pay_direct}</td>
-                                <td>{item.pay_security_amount}</td>
+                                {/* <td>{item.pay_direct}</td>
+                                <td>{item.pay_security_amount}</td> */}
                                 <td>
-                                  {item.pending_sitting_amount === null
+                                  {item.payment_status === "pending"
                                     ? item.sitting_amount
-                                    : item.pending_sitting_amount}
+                                    : 0}
                                 </td>
                                 <td>{item?.date?.split(" ")[0]}</td>
                                 <td>

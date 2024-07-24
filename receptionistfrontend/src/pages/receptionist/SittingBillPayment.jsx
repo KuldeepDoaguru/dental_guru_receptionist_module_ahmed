@@ -15,9 +15,11 @@ function SittingBillPayment() {
   const { sbid, tpid, uhid } = useParams();
   const [loading, setLoading] = useState(false);
   const { refreshTable, currentUser } = useSelector((state) => state.user);
+  console.log(currentUser);
   const token = currentUser?.token;
   const branch = currentUser.branch_name;
   const [branchData, setBranchData] = useState([]);
+  const [allSitting, setAllSitting] = useState([]);
   const [billAmount, setBillAmount] = useState([]);
   const [saAmt, setSaAmt] = useState([]);
   console.log(token);
@@ -93,14 +95,67 @@ function SittingBillPayment() {
     }
   };
 
+  const getAllSittingBill = async () => {
+    try {
+      const { data } = await axios.get(
+        `http://localhost:4000/api/v1/receptionist/getPaidSittingBillbyTpid/${tpid}/${branch}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setAllSitting(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   useEffect(() => {
     branchDetails();
     getBillDetails();
     secuirtyAmtBytpuhid();
+    getAllSittingBill();
   }, []);
 
   console.log(branchData);
   console.log(billAmount);
+  console.log(allSitting);
+
+  const totalDirPaidAmount = () => {
+    try {
+      let total = 0;
+      allSitting.forEach((item) => {
+        total = total + parseFloat(Number(item.pay_direct));
+      });
+      console.log(total);
+      return total;
+    } catch (error) {
+      console.log(error);
+      return 0;
+    }
+  };
+
+  const totalDirPaidValue = totalDirPaidAmount();
+  console.log(totalDirPaidValue);
+
+  const totalSecPaidAmount = () => {
+    try {
+      let total = 0;
+      allSitting.forEach((item) => {
+        total = total + parseFloat(Number(item.pay_security_amount));
+      });
+      console.log(total);
+      return total;
+    } catch (error) {
+      console.log(error);
+      return 0;
+    }
+  };
+
+  const totalSecPaidValue = totalSecPaidAmount();
+  console.log(totalSecPaidValue);
 
   const todayDate = new Date();
   const year = todayDate.getFullYear();
@@ -109,9 +164,17 @@ function SittingBillPayment() {
   const formattedDate = `${year}-${month}-${date}`;
 
   console.log(formattedDate);
+  console.log(saAmt);
 
   // If dueAmt is negative, meaning there is an overpayment, we set totalPaidAmount to 0
-  //   const remainingSecurityAmount = saA
+  const remainingSecurityAmountCheck = () => {
+    if (saAmt[0]?.remaining_amount >= billAmount[0]?.sitting_amount) {
+      return saAmt[0]?.remaining_amount - billAmount[0]?.sitting_amount;
+    }
+  };
+
+  const remainingSecurityAmount = remainingSecurityAmountCheck();
+  console.log(remainingSecurityAmount);
 
   const updateRemainingSecurity = async () => {
     // console.log(remainingSecurityAmount);
@@ -120,7 +183,7 @@ function SittingBillPayment() {
       const response = await axios.put(
         `http://localhost:4000/api/v1/receptionist/updateRemainingSecurityAmount/${tpid}/${uhid}`,
         {
-          remaining_amount: "",
+          remaining_amount: remainingSecurityAmount,
         },
         {
           headers: {
@@ -138,25 +201,59 @@ function SittingBillPayment() {
   };
 
   const formDetails = {
-    paid_amount: data.paid_amount,
-    pending_sitting_amount:
-      billAmount[0]?.pending_sitting_amount === null
-        ? billAmount[0]?.sitting_amount - data.paid_amount
-        : billAmount[0]?.pending_sitting_amount - data.paid_amount,
-    pay_direct: data.payment_option === "paydirect" ? data.paid_amount : "",
+    paid_amount: billAmount[0]?.sitting_amount,
+    pending_sitting_amount: 0,
+    pay_direct:
+      data.payment_option === "paydirect" ? billAmount[0]?.sitting_amount : "",
     pay_security_amount:
-      data.payment_option === "security" ? data.paid_amount : "",
-    payment_mode: data.payment_mode,
+      data.payment_option === "security" ? billAmount[0]?.sitting_amount : "",
+    payment_mode:
+      data.payment_option === "security"
+        ? "security amount"
+        : data.payment_mode,
     reference_number: data.reference_number,
-    payment_status:
-      billAmount[0]?.sitting_amount === data.paid_amount ||
-      billAmount[0]?.pending_sitting_amount === data.paid_amount
-        ? "paid"
-        : "pending",
+    payment_status: "paid",
     note: data.note,
   };
 
   console.log(formDetails);
+
+  const billUpdateForm = {
+    paid_amount:
+      data.payment_option === "paydirect"
+        ? totalDirPaidValue + billAmount[0]?.sitting_amount
+        : totalDirPaidValue,
+    payment_status: "",
+    payment_mode: "",
+    transaction_Id: "",
+    note: "",
+    receiver_name: currentUser.employee_name,
+    receiver_emp_id: currentUser.employee_ID,
+    pay_by_sec_amt:
+      data.payment_option === "security"
+        ? totalSecPaidValue + billAmount[0]?.sitting_amount
+        : totalSecPaidValue,
+  };
+
+  console.log(billUpdateForm);
+
+  const updateBillforSitting = async () => {
+    try {
+      const res = await axios.put(
+        `http://localhost:4000/api/v1/receptionist/updateBillforSitting/${branch}/${tpid}`,
+        billUpdateForm,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      cogoToast.success("bill updated successfully");
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   const submitSittingBill = async () => {
     try {
@@ -171,6 +268,8 @@ function SittingBillPayment() {
         }
       );
       cogoToast.success("successfully paid sitting bill");
+      updateRemainingSecurity();
+      updateBillforSitting();
       navigate(
         `/ViewPatientSittingBill/${tpid}/${sbid}/${billAmount[0]?.treatment}`
       );
@@ -268,13 +367,7 @@ function SittingBillPayment() {
                         <div class=" rounded d-flex justify-content-end mt-5 me-5">
                           <div class="card" style={{ width: "18rem" }}>
                             <div className="ms-4 mt-2">
-                              <h1>
-                                {" "}
-                                ₹{" "}
-                                {billAmount[0]?.pending_sitting_amount === null
-                                  ? billAmount[0]?.sitting_amount
-                                  : billAmount[0]?.pending_sitting_amount}
-                              </h1>
+                              <h1> ₹ {billAmount[0]?.sitting_amount}</h1>
 
                               <h5 className="text-danger">
                                 Total Treatment Amount
@@ -325,11 +418,7 @@ function SittingBillPayment() {
                       <label class="form-label">Sitting Amount</label>
                       <input
                         type="text"
-                        value={
-                          billAmount[0]?.pending_sitting_amount === null
-                            ? billAmount[0]?.sitting_amount
-                            : billAmount[0]?.pending_sitting_amount
-                        }
+                        value={billAmount[0]?.sitting_amount}
                         class="form-control"
                       />
                     </div>
@@ -340,8 +429,8 @@ function SittingBillPayment() {
                       <input
                         type="text"
                         name="paid_amount"
-                        value={data.paid_amount}
-                        onChange={handleChange}
+                        value={billAmount[0]?.sitting_amount}
+                        readOnly
                         placeholder="Add Amount"
                         class="form-control"
                       />
@@ -429,12 +518,28 @@ function SittingBillPayment() {
                           <label class="form-label">
                             Pay using Security Amount
                           </label>
-                          <button
-                            className="btn btn-info form-control shadow"
-                            type="button"
-                          >
-                            Pay using security amount
-                          </button>
+                          {data.payment_option !== "security" ? (
+                            <>
+                              {" "}
+                              <button
+                                className="btn btn-info form-control shadow"
+                                disabled
+                              >
+                                Pay using security amount
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {" "}
+                              <button
+                                className="btn btn-info form-control shadow"
+                                type="button"
+                                onClick={submitSittingBill}
+                              >
+                                Pay using security amount
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </>

@@ -18,7 +18,6 @@ function PatientsDue() {
   const branch = currentUser.branch_name;
   const token = currentUser?.token;
   const [loadingEffect, setLoadingEffect] = useState(false);
-
   const [patBill, setPatBill] = useState([]);
 
   const getPatBills = async () => {
@@ -43,12 +42,7 @@ function PatientsDue() {
 
   console.log(patBill);
   const filterForUnPaidBills = patBill?.filter((item) => {
-    return (
-      item.payment_status !== "paid" &&
-      Number(item.total_amount) -
-        (Number(item.paid_amount) + Number(item.pay_by_sec_amt)) >
-        0
-    );
+    return item.payment_status !== "paid";
   });
 
   useEffect(() => {
@@ -56,6 +50,7 @@ function PatientsDue() {
   }, []);
 
   console.log(patBill);
+  console.log(filterForUnPaidBills);
 
   //   const [showEditPatientPopup, setShowEditPatientPopup] = useState(false);
   //   const [selectedPatient, setSelectedPatient] = useState("");
@@ -334,7 +329,11 @@ function PatientsDue() {
                                         backgroundColor: "#FFA600",
                                       }}
                                     >
-                                      Pay Now
+                                      {Number(item.total_amount) ===
+                                      Number(item.paid_amount) +
+                                        Number(item.pay_by_sec_amt)
+                                        ? "complete the bill"
+                                        : "Pay Now"}
                                     </button>
                                   </Link>
                                 </td>
